@@ -11,3 +11,4 @@ beautifulsoup4
 requests
 firebase-admin
 Pyrebase4
+setuptools
