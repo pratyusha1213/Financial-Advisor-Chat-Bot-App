@@ -4,6 +4,7 @@ langchain-openai
 langchain-community
 python-dotenv
 chromadb
+pysqlite3-binary
 pypdf
 yfinance
 tiktoken
