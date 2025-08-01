@@ -16,6 +16,7 @@ from streamlit.errors import StreamlitAPIException, StreamlitSecretNotFoundError
 
 # Import all necessary functions from utils
 from utils import (
+    create_vector_store, # Import the function to build the DB
     get_retriever,
     get_compression_retriever,
     get_multi_query_retriever,
@@ -54,11 +55,9 @@ def initialize_firebase():
 firebase = initialize_firebase()
 db = firestore.client() if firebase else None
 
-# --- AUTHENTICATION PAGES (Updated with unique keys) ---
+# --- AUTHENTICATION PAGES (Unchanged) ---
 def signup_page():
     st.header("Create a New Account")
-    # --- THIS IS THE FIX ---
-    # Added unique keys to each text_input to prevent ID conflicts
     name = st.text_input("Name", key="signup_name")
     email = st.text_input("Email", key="signup_email")
     password = st.text_input("Password", type="password", key="signup_password")
@@ -74,7 +73,6 @@ def signup_page():
 
 def login_page():
     st.header("Login")
-    # --- THIS IS THE FIX ---
     email = st.text_input("Email", key="login_email")
     password = st.text_input("Password", type="password", key="login_password")
     if st.button("Login", use_container_width=True):
@@ -89,7 +87,6 @@ def login_page():
 
 def forgot_password_page():
     st.header("Reset Your Password")
-    # --- THIS IS THE FIX ---
     email = st.text_input("Enter your account email", key="forgot_email")
     if st.button("Send Reset Link", use_container_width=True):
         if not email:
@@ -102,33 +99,37 @@ def forgot_password_page():
 
 # --- AGENT INITIALIZATION (Updated) ---
 def initialize_agent():
-    """Initializes the agent components, now with a custom retriever tool for sources."""
+    """Initializes the agent components, building the knowledge base if it doesn't exist."""
     llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
     if 'rag_strategy' not in st.session_state:
         st.session_state.rag_strategy = random.choice(['standard', 'compressed', 'multi_query'])
     strategy = st.session_state.rag_strategy
     print(f"--- Session assigned to RAG Strategy: {strategy.upper()} ---")
 
+    # Check if the knowledge base exists. If not, build it. This is crucial for deployment.
+    if not os.path.exists("chroma_db"):
+        with st.spinner("Building knowledge base for the first time... This may take a minute."):
+            try:
+                create_vector_store()
+                st.success("Knowledge base built successfully!")
+            except Exception as e:
+                st.error(f"Failed to build knowledge base: {e}")
+                st.session_state.agent_ready = False
+                return
+
     try:
-        # --- THIS IS THE KEY CHANGE FOR SHOWING SOURCES ---
-        # 1. Get the base retriever first
         if strategy == 'standard': retriever = get_retriever()
         elif strategy == 'compressed': retriever = get_compression_retriever(llm=llm)
         else: retriever = get_multi_query_retriever(llm=llm)
 
-        # 2. Create a function that formats the retrieved documents
         def retrieve_and_format_docs(query: str) -> str:
             docs = retriever.invoke(query)
-            if not docs:
-                return "No information found in the knowledge base for this query."
-            # Format the documents with their source metadata
-            formatted_context = "\n\n".join(
+            if not docs: return "No information found in the knowledge base for this query."
+            return "\n\n".join(
                 f"Source: {os.path.basename(doc.metadata.get('source', 'N/A'))}, Page: {doc.metadata.get('page', 'N/A')}\nContent: {doc.page_content}"
                 for doc in docs
             )
-            return formatted_context
 
-        # 3. Create a custom tool from this function
         retriever_tool = Tool(
             name="financial_knowledge_search",
             func=retrieve_and_format_docs,
@@ -146,7 +147,7 @@ def initialize_agent():
     st.session_state.agent_ready = True
     print("Agent components initialized successfully.")
 
-# --- MAIN APP ---
+# --- MAIN APP (Unchanged) ---
 def get_chat_title(messages):
     if messages and isinstance(messages[0], HumanMessage):
         title = messages[0].content.split('\n')[0]
@@ -188,7 +189,7 @@ def main_app():
         if st.button("Logout", use_container_width=True, type="secondary"):
             keys_to_delete = ['logged_in', 'uid', 'user_name', 'active_chat_id']
             for key in keys_to_delete:
-                if key in st.session_state: del st.session_state[key]
+                if key in st.session_state: del st.session_state.key
             st.rerun()
 
     if 'active_chat_id' not in st.session_state or st.session_state.active_chat_id is None:
@@ -204,7 +205,6 @@ def main_app():
         st.chat_message("user").markdown(user_input)
         chat_history.append(HumanMessage(content=user_input))
         
-        # --- UPDATED PROMPT TO INSTRUCT CITATION ---
         prompt = ChatPromptTemplate.from_messages([
             ("system", f"You are a specialized Financial Advisor Bot assisting {st.session_state.user_name}. You must only use the tools provided to you. If you cannot answer using your tools, politely say you cannot help. When you use the 'financial_knowledge_search' tool, you MUST cite the source and page number for the information in your final answer. For example: 'According to [Source File], page [Page Number], dollar-cost averaging is...'."),
             MessagesPlaceholder(variable_name="chat_history"),
@@ -227,7 +227,7 @@ def main_app():
                     chat_history.append(AIMessage(content=error_message))
         if len(chat_history) == 2: st.rerun()
 
-# --- MAIN APP ROUTER ---
+# --- MAIN APP ROUTER (Updated) ---
 if "agent_ready" not in st.session_state: initialize_agent()
 if "user_conversations" not in st.session_state: st.session_state.user_conversations = {}
 if firebase and st.session_state.get("agent_ready", False):
