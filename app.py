@@ -97,7 +97,7 @@ def forgot_password_page():
             st.success("A password reset link has been sent to your email address.")
         except Exception as e: st.error(f"Could not send reset email: {e}")
 
-# --- AGENT INITIALIZATION (Updated) ---
+# --- AGENT INITIALIZATION (Unchanged) ---
 def initialize_agent():
     """Initializes the agent components, building the knowledge base if it doesn't exist."""
     llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
@@ -106,11 +106,10 @@ def initialize_agent():
     strategy = st.session_state.rag_strategy
     print(f"--- Session assigned to RAG Strategy: {strategy.upper()} ---")
 
-    # Check if the knowledge base exists. If not, build it. This is crucial for deployment.
     if not os.path.exists("chroma_db"):
         with st.spinner("Building knowledge base for the first time... This may take a minute."):
             try:
-                create_vector_store()
+                create_vector_store(data_path="knowledge_base")
                 st.success("Knowledge base built successfully!")
             except Exception as e:
                 st.error(f"Failed to build knowledge base: {e}")
@@ -147,7 +146,7 @@ def initialize_agent():
     st.session_state.agent_ready = True
     print("Agent components initialized successfully.")
 
-# --- MAIN APP (Unchanged) ---
+# --- MAIN APP ---
 def get_chat_title(messages):
     if messages and isinstance(messages[0], HumanMessage):
         title = messages[0].content.split('\n')[0]
@@ -189,7 +188,9 @@ def main_app():
         if st.button("Logout", use_container_width=True, type="secondary"):
             keys_to_delete = ['logged_in', 'uid', 'user_name', 'active_chat_id']
             for key in keys_to_delete:
-                if key in st.session_state: del st.session_state.key
+                # --- THIS IS THE FIX for the logout error ---
+                # Changed del st.session_state.key to del st.session_state[key]
+                if key in st.session_state: del st.session_state[key]
             st.rerun()
 
     if 'active_chat_id' not in st.session_state or st.session_state.active_chat_id is None:
@@ -227,13 +228,13 @@ def main_app():
                     chat_history.append(AIMessage(content=error_message))
         if len(chat_history) == 2: st.rerun()
 
-# --- MAIN APP ROUTER (Updated) ---
+# --- MAIN APP ROUTER ---
 if "agent_ready" not in st.session_state: initialize_agent()
 if "user_conversations" not in st.session_state: st.session_state.user_conversations = {}
 if firebase and st.session_state.get("agent_ready", False):
     if st.session_state.get("logged_in", False): main_app()
     else:
-        # --- THIS IS THE FIX ---
+        # --- THIS IS THE FIX for the RAG strategy error ---
         # The line that deleted 'rag_strategy' has been removed.
         # The strategy will now persist correctly across logins/logouts in the same session.
         login_tab, signup_tab, forgot_password_tab = st.tabs(["Login", "Sign Up", "Forgot Password"])
