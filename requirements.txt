@@ -1,0 +1,13 @@
+streamlit
+langchain
+langchain-openai
+langchain-community
+python-dotenv
+chromadb
+pypdf
+yfinance
+tiktoken
+beautifulsoup4
+requests
+firebase-admin
+Pyrebase4
