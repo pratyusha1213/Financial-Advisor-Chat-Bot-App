@@ -12,3 +12,5 @@ requests
 firebase-admin
 Pyrebase4
 setuptools
+urllib3==1.26.15
+requests-toolbelt==0.9.1
