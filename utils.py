@@ -22,7 +22,7 @@ from langchain.retrievers.multi_query import MultiQueryRetriever
 # Load environment variables from the .env file
 load_dotenv()
 
-# --- WEB SCRAPING & KNOWLEDGE BASE UPDATE (Unchanged) ---
+# --- WEB SCRAPING & KNOWLEDGE BASE UPDATE ---
 def scrape_reuters_financial_news(num_articles: int = 5):
     """Scrapes the latest financial news articles from Reuters."""
     print("--- Calling tool: scrape_reuters_financial_news ---")
@@ -65,7 +65,7 @@ def update_knowledge_base(index_path: str = "chroma_db"):
         return f"Successfully added {len(new_docs)} new articles to the knowledge base."
     except Exception as e: return f"An error occurred while updating the knowledge base: {e}"
 
-# --- KNOWLEDGE BASE CREATION & RETRIEVAL (Unchanged) ---
+# --- KNOWLEDGE BASE CREATION & RETRIEVAL ---
 def create_vector_store(data_path: str = "knowledge_base/", index_path: str = "chroma_db"):
     """Builds and saves a ChromaDB vector store from PDF documents."""
     if os.path.exists(index_path):
@@ -108,7 +108,6 @@ def get_multi_query_retriever(llm: ChatOpenAI, index_path: str = "chroma_db"):
 @tool
 def get_current_stock_price(ticker: str) -> str:
     """Fetches the current stock price for a given ticker symbol."""
-    # --- ADDED VALIDATION ---
     if not re.match(r"^[A-Z]{1,5}$", ticker.upper()):
         return "Error: Invalid ticker symbol format. Please use 1-5 uppercase letters (e.g., 'AAPL')."
     
@@ -122,7 +121,6 @@ def get_current_stock_price(ticker: str) -> str:
 @tool
 def get_company_info(ticker: str) -> str:
     """Provides a summary of a company's business for a given ticker symbol."""
-    # --- ADDED VALIDATION ---
     if not re.match(r"^[A-Z]{1,5}$", ticker.upper()):
         return "Error: Invalid ticker symbol format. Please use 1-5 uppercase letters (e.g., 'MSFT')."
         
