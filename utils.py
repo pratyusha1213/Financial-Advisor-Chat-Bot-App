@@ -3,7 +3,8 @@ import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import os
-import re # Import the regular expressions module
+import re 
+import json
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -135,12 +136,25 @@ def get_company_info(ticker: str) -> str:
 
 @tool
 def calculate_investment_projection(principal: float, monthly_contribution: float, years: int, annual_rate: float) -> str:
-    """Calculates the future value of an investment. 'annual_rate' should be a decimal (e.g., 7% is 0.07)."""
+    """
+    Calculates the future value of an investment. 'annual_rate' should be a decimal (e.g., 7% is 0.07).
+    Returns a JSON string with the projection details.
+    """
+    print(f"--- Calling tool: calculate_investment_projection ---")
     monthly_rate, months = annual_rate / 12, years * 12
     fv_principal = principal * ((1 + monthly_rate) ** months)
     fv_contributions = monthly_contribution * ((((1 + monthly_rate) ** months) - 1) / monthly_rate) if monthly_rate > 0 else monthly_contribution * months
     total_fv = fv_principal + fv_contributions
-    return f"After {years} years, your investment is projected to be worth **${total_fv:,.2f}**."
+
+    projection_data = {
+        "initial_principal": f"${principal:,.2f}",
+        "monthly_contribution": f"${monthly_contribution:,.2f}",
+        "investment_period_years": years,
+        "estimated_annual_rate_percent": f"{annual_rate*100:.1f}%",
+        "projected_future_value": f"${total_fv:,.2f}"
+    }
+    
+    return json.dumps(projection_data, indent=2)
 
 if __name__ == '__main__':
     try:
