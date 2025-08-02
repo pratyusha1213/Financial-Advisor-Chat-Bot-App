@@ -10,13 +10,12 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.tools import Tool # Import the base Tool class
+from langchain.tools import Tool 
 from langchain_core.messages import HumanMessage, AIMessage
 from streamlit.errors import StreamlitAPIException, StreamlitSecretNotFoundError
 
-# Import all necessary functions from utils
 from utils import (
-    create_vector_store, # Import the function to build the DB
+    create_vector_store, 
     get_retriever,
     get_compression_retriever,
     get_multi_query_retriever,
@@ -26,7 +25,7 @@ from utils import (
     update_knowledge_base
 )
 
-# --- FIREBASE & APP CONFIGURATION (Unchanged) ---
+# --- FIREBASE & APP CONFIGURATION ---
 load_dotenv()
 FIREBASE_CONFIG = {
   "apiKey": os.getenv("FIREBASE_API_KEY"), "authDomain": os.getenv("AUTH_DOMAIN"),
@@ -38,7 +37,7 @@ if not FIREBASE_CONFIG["apiKey"] or not FIREBASE_CONFIG["databaseURL"]:
     st.error("Firebase configuration not found. Please ensure your .env file is correctly populated.")
     st.stop()
 
-# --- FIREBASE INITIALIZATION (Unchanged) ---
+# --- FIREBASE INITIALIZATION ---
 def initialize_firebase():
     try:
         if not firebase_admin._apps:
@@ -55,7 +54,7 @@ def initialize_firebase():
 firebase = initialize_firebase()
 db = firestore.client() if firebase else None
 
-# --- AUTHENTICATION PAGES (Unchanged) ---
+# --- AUTHENTICATION PAGES ---
 def signup_page():
     st.header("Create a New Account")
     name = st.text_input("Name", key="signup_name")
@@ -97,7 +96,7 @@ def forgot_password_page():
             st.success("A password reset link has been sent to your email address.")
         except Exception as e: st.error(f"Could not send reset email: {e}")
 
-# --- AGENT INITIALIZATION (Unchanged) ---
+# --- AGENT INITIALIZATION ---
 def initialize_agent():
     """Initializes the agent components, building the knowledge base if it doesn't exist."""
     llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
@@ -188,8 +187,6 @@ def main_app():
         if st.button("Logout", use_container_width=True, type="secondary"):
             keys_to_delete = ['logged_in', 'uid', 'user_name', 'active_chat_id']
             for key in keys_to_delete:
-                # --- THIS IS THE FIX for the logout error ---
-                # Changed del st.session_state.key to del st.session_state[key]
                 if key in st.session_state: del st.session_state[key]
             st.rerun()
 
@@ -234,9 +231,6 @@ if "user_conversations" not in st.session_state: st.session_state.user_conversat
 if firebase and st.session_state.get("agent_ready", False):
     if st.session_state.get("logged_in", False): main_app()
     else:
-        # --- THIS IS THE FIX for the RAG strategy error ---
-        # The line that deleted 'rag_strategy' has been removed.
-        # The strategy will now persist correctly across logins/logouts in the same session.
         login_tab, signup_tab, forgot_password_tab = st.tabs(["Login", "Sign Up", "Forgot Password"])
         with login_tab: login_page()
         with signup_tab: signup_page()
